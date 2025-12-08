@@ -8,10 +8,6 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Seguimiento from "./pages/Seguimiento";
 import SeguimientoDetalle from "./pages/SeguimientoDetalle"; // ← nuevo
-import Modelador from "./pages/Modelador";
-import Gestion from "./pages/Gestion";
-import Auditoria from "./pages/Auditoria";
-import API from "./pages/API";
 import Configuracion from "./pages/Configuracion";
 import Ayuda from "./pages/Ayuda";
 import Revision from "./pages/Revision"; // ⬅️ AÑADIR ESTA LÍNEA
@@ -39,12 +35,9 @@ function App() {
         {/* Rutas */}
         <Routes>
           <Route path="/" element={<Home />} />
-          {/* <Route path="/modelador" element={<Modelador />} /> */}
-          <Route path="/seguimiento" element={<Seguimiento />} />
+          <Route path="/seguimiento" element={<Seguimiento />} />s
           <Route path="/seguimiento/:id" element={<SeguimientoDetalle />} />
-          {/* <Route path="/gestion" element={<Gestion />} />
-          <Route path="/auditoria" element={<Auditoria />} /> */}
-          {/* <Route path="/api" element={<API />} /> */}
+          <Route path="/revision" element={<Revision />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="/ayuda" element={<Ayuda />} />
           <Route path="/prueba-api" element={<PruebaAPI />} />

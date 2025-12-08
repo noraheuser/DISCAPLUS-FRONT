@@ -3,6 +3,12 @@ import {
   Container,
   Paper,
   Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Grid,
   TextField,
   MenuItem,
@@ -12,8 +18,31 @@ import {
   Divider,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import api from "../api/client";
 
+const documentosAdjuntos = [
+  {
+    tipo: "Cédula de identidad",
+    archivo: "CI.pdf",
+  },
+  {
+    tipo: "Informe Biomédico Funcional",
+    archivo: "informe-biomedico.pdf",
+  },
+  {
+    tipo: "Informe Social y Redes de Apoyo",
+    archivo: "informe-social-redes-de-apoyo.pdf",
+  },
+  {
+    tipo: "IVADEC",
+    archivo: "IVADEC.pdf",
+  },
+  {
+    tipo: "Antecedentes",
+    archivo: "ANTECEDENTE.pdf",
+  },
+];
 // ---- mapeos igual que en Seguimiento.jsx ----
 const mapEstadoFromApi = (estadoApi) => {
   switch (estadoApi) {
@@ -48,6 +77,7 @@ const mapEtapaFromApi = (etapaApi) => {
 const SeguimientoDetalle = () => {
   const { id } = useParams(); // id de solicitud
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -180,6 +210,22 @@ const SeguimientoDetalle = () => {
     } catch (err) {
       console.error("Error al devolver a corrección", err);
       alert("No se pudo devolver la solicitud.");
+    }
+  };
+  // -------- 4. Acción: aprobar revisión --------
+  const handleAprobarRevision = async () => {
+    if (!solicitud) return;
+    try {
+      await api.patch(
+        `/solicitud/${id}/aprobar-revision`,
+        { id_funcionario: user.id_funcionario }
+      );
+
+      alert("Solicitud aprobada y enviada a 'En espera de Derivación'");
+      window.location.reload(); // refresca y desaparece del listado
+    } catch (error) {
+      console.error(error);
+      alert("Error al aprobar la solicitud");
     }
   };
 
@@ -317,6 +363,62 @@ const SeguimientoDetalle = () => {
         </Grid>
 
         <Divider sx={{ my: 2 }} />
+
+        {/* DOCUMENTOS ADJUNTOS */}
+        <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+  Documentos adjuntos
+</Typography>
+
+<TableContainer component={Paper} sx={{ mb: 3 }}>
+  <Table size="small">
+    <TableHead>
+      <TableRow>
+        <TableCell>Tipo de documento</TableCell>
+        <TableCell>Archivo</TableCell>
+        <TableCell align="right">Acción</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {documentosAdjuntos.map((doc) => (
+        <TableRow key={doc.archivo}>
+          <TableCell>{doc.tipo}</TableCell>
+          <TableCell>{doc.archivo}</TableCell>
+          <TableCell align="right">
+            <Button
+              variant="outlined"
+              size="small"
+              component="a"
+              href={`/docs/${doc.archivo}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+            >
+              Descargar
+            </Button>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+</TableContainer>
+
+{/* BOTONES DE REVISIÓN SOLO PARA EL ANALISTA ASIGNADO */}
+{solicitud.etapa === "REVISION" &&
+ solicitud.asignado_a === user.id_funcionario && (
+  <Box sx={{ mb: 3 }}>
+    <Button
+      variant="contained"
+      color="success"
+      sx={{ mr: 2 }}
+      onClick={handleAprobarRevision}
+    >
+      Aprobar solicitud
+    </Button>
+
+    {/* luego hacemos el devolver con el mismo estilo */}
+  </Box>
+)}
+
 
         {/* ASIGNACIÓN / DERIVACIÓN */}
         <Typography variant="h6" gutterBottom>

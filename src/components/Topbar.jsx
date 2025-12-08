@@ -4,7 +4,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { useAuth } from "../contexts/AuthContext";
 
 const Topbar = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <AppBar
@@ -16,9 +16,10 @@ const Topbar = () => {
           Sistema de Trámites
         </Typography>
         <Typography variant="body1" sx={{ mr: 2 }}>
-          admin
+          {user?.nombre_completo || user?.rut}
         </Typography>
-        <Avatar sx={{ bgcolor: "secondary.main", mr: 1 }}>A</Avatar>
+        <Avatar sx={{ bgcolor: "secondary.main", mr: 1 }}>{user?.nombre_completo?.charAt(0) || "U"}
+        </Avatar>
         <IconButton color="inherit" onClick={logout}>
           <LogoutIcon />
         </IconButton>

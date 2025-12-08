@@ -80,6 +80,7 @@ const obtenerAsignadosUnicos = (tramites) => {
 };
 
 const Seguimiento = () => {
+  const [rutExacto, setRutExacto] = useState("");  
   const [rutDesde, setRutDesde] = useState("");
   const [rutHasta, setRutHasta] = useState("");
 
@@ -125,7 +126,7 @@ const Seguimiento = () => {
           const derivacion = derivaciones.find(
             (d) => d.id_derivacion === s.id_derivacion
           );
-          const etapaTexto = mapEtapaFromApi(s.etapa);
+          const etapaLabel = mapEtapaFromApi(s.etapa);
 
           return {
             id: s.id_solicitud,
@@ -136,8 +137,10 @@ const Seguimiento = () => {
               usuario?.nombres && usuario?.apellidos
                 ? `${usuario.nombres} ${usuario.apellidos}`
                 : "",
-            estado: mapEstadoFromApi(s.estado),
-             etapa: etapaTexto,
+            estado: s.estado,                 // <--- ENUM real: EN_CURSO, COMPLETADO, RECHAZADO
+            estadoLabel: mapEstadoFromApi(s.estado),
+              etapa: s.etapa,       // valor REAL ENUM
+              etapaLabel,   
             // 👇 SI está "En espera de derivación", mostramos vacío aunque la BD tenga algo
             // 👉 Dos campos separados
             asignadoA: funcionario?.nombre_completo || "",
@@ -165,6 +168,7 @@ const Seguimiento = () => {
   }, []);
 
   const limpiarFiltros = () => {
+    setRutExacto("");  
     setRutDesde("");
     setRutHasta("");
     setNombre("");
@@ -181,56 +185,68 @@ const Seguimiento = () => {
   };
 
   const filtrarTramites = () => {
-    const rutDesdeNum = normalizarRut(rutDesde);
-    const rutHastaNum = normalizarRut(rutHasta);
+  const rutDesdeNum = normalizarRut(rutDesde);
+  const rutHastaNum = normalizarRut(rutHasta);
+  const rutExactoNum = normalizarRut(rutExacto);   // 👈 NUEVO
 
-    return tramites.filter((t) => {
-      const rutTramiteNum = normalizarRut(t.rut);
+  return tramites.filter((t) => {
+    const rutTramiteNum = normalizarRut(t.rut);
 
-      let cumpleRut = true;
-      if (rutDesde || rutHasta) {
-        if (rutTramiteNum == null) {
+    let cumpleRut = true;
+
+    // 👉 PRIORIDAD: si hay RUT exacto, se usa sólo eso
+    if (rutExacto) {
+      if (
+        rutTramiteNum == null ||
+        rutExactoNum == null ||
+        rutTramiteNum !== rutExactoNum
+      ) {
+        cumpleRut = false;
+      }
+    } else if (rutDesde || rutHasta) {
+      // Si no hay RUT exacto, usamos el rango como antes
+      if (rutTramiteNum == null) {
+        cumpleRut = false;
+      } else {
+        if (rutDesdeNum != null && rutTramiteNum < rutDesdeNum) {
           cumpleRut = false;
-        } else {
-          if (rutDesdeNum != null && rutTramiteNum < rutDesdeNum) {
-            cumpleRut = false;
-          }
-          if (rutHastaNum != null && rutTramiteNum > rutHastaNum) {
-            cumpleRut = false;
-          }
+        }
+        if (rutHastaNum != null && rutTramiteNum > rutHastaNum) {
+          cumpleRut = false;
         }
       }
+    }
 
-      const nombreCompleto =
-        `${t.nombres || ""} ${t.apellidos || ""}`.trim() || t.nombre || "";
+    const nombreCompleto =
+      `${t.nombres || ""} ${t.apellidos || ""}`.trim() || t.nombre || "";
 
-      const cumpleNombre =
-        nombre === "" ||
-        nombreCompleto.toLowerCase().includes(nombre.toLowerCase());
+    const cumpleNombre =
+      nombre === "" ||
+      nombreCompleto.toLowerCase().includes(nombre.toLowerCase());
 
-      const cumpleEstado = estado === "" || t.estado === estado;
-      const cumpleEtapa = etapa === "" || t.etapa === etapa;
-      const cumpleAsignado =
-        asignadoA === "" ||
-        t.asignadoA.toLowerCase().includes(asignadoA.toLowerCase());
-      const cumpleDesde =
-        fechaDesde === "" ||
-        new Date(t.fechaCreacion) >= new Date(fechaDesde);
-      const cumpleHasta =
-        fechaHasta === "" ||
-        new Date(t.fechaCreacion) <= new Date(fechaHasta);
+    const cumpleEstado = estado === "" || t.estado === estado;
+    const cumpleEtapa = etapa === "" || t.etapa === etapa;
+    const cumpleAsignado =
+      asignadoA === "" ||
+      t.asignadoA.toLowerCase().includes(asignadoA.toLowerCase());
+    const cumpleDesde =
+      fechaDesde === "" ||
+      new Date(t.fechaCreacion) >= new Date(fechaDesde);
+    const cumpleHasta =
+      fechaHasta === "" ||
+      new Date(t.fechaCreacion) <= new Date(fechaHasta);
 
-      return (
-        cumpleRut &&
-        cumpleNombre &&
-        cumpleEstado &&
-        cumpleEtapa &&
-        cumpleAsignado &&
-        cumpleDesde &&
-        cumpleHasta
-      );
-    });
-  };
+    return (
+      cumpleRut &&
+      cumpleNombre &&
+      cumpleEstado &&
+      cumpleEtapa &&
+      cumpleAsignado &&
+      cumpleDesde &&
+      cumpleHasta
+    );
+  });
+};
 
   const tramitesFiltrados = filtrarTramites();
 
@@ -279,6 +295,15 @@ const Seguimiento = () => {
         </Typography>
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="RUT exacto"
+                helperText="Si lo usas, ignora el rango"
+                value={rutExacto}
+                onChange={(e) => setRutExacto(e.target.value)}
+                fullWidth
+              />
+            </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="RUT desde"
@@ -426,11 +451,11 @@ const Seguimiento = () => {
                         ? `${t.nombres} ${t.apellidos}`
                         : t.nombre}
                     </TableCell>
-                    <TableCell>{renderEstadoChip(t.estado)}</TableCell>
-                    <TableCell>{t.etapa}</TableCell>
+                    <TableCell>{renderEstadoChip(t.estadoLabel)}</TableCell>
+                    <TableCell>{t.etapaLabel}</TableCell>
                     <TableCell>{t.asignadoA}</TableCell>
                     <TableCell>{t.derivadoA}</TableCell>    
-                    
+
                     <TableCell>
                       {t.fechaCreacion &&
                         new Date(t.fechaCreacion).toLocaleString()}

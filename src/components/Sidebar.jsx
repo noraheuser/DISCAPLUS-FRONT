@@ -47,13 +47,6 @@ const Sidebar = () => {
           <ListItemText primary="Inicio" />
         </ListItemButton>
 
-        {/* Modelador */}
-        <ListItemButton component={Link} to="/modelador">
-          <ListItemIcon>
-            <EngineeringIcon />
-          </ListItemIcon>
-          <ListItemText primary="Modelador" />
-        </ListItemButton>
 
         {/* Seguimiento */}
         <ListItemButton component={Link} to="/seguimiento">
@@ -64,36 +57,13 @@ const Sidebar = () => {
         </ListItemButton>
 
         {/* Revisión (misma ruta que seguimiento) */}
-        <ListItemButton component={Link} to="/seguimiento">
+        <ListItemButton component={Link} to="/revision">
           <ListItemIcon>
             <FactCheckIcon />
           </ListItemIcon>
           <ListItemText primary="Revisión" />
         </ListItemButton>
 
-        {/* Gestión */}
-        <ListItemButton component={Link} to="/gestion">
-          <ListItemIcon>
-            <ManageAccountsIcon />
-          </ListItemIcon>
-          <ListItemText primary="Gestión" />
-        </ListItemButton>
-
-        {/* Auditoría */}
-        <ListItemButton component={Link} to="/auditoria">
-          <ListItemIcon>
-            <FactCheckIcon />
-          </ListItemIcon>
-          <ListItemText primary="Auditoría" />
-        </ListItemButton>
-
-        {/* API */}
-        <ListItemButton component={Link} to="/api">
-          <ListItemIcon>
-            <ApiIcon />
-          </ListItemIcon>
-          <ListItemText primary="API" />
-        </ListItemButton>
 
         <Divider sx={{ my: 1 }} />
 
