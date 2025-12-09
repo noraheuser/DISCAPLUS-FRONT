@@ -49,7 +49,7 @@ const mapEtapaFromApi = (etapaApi) => {
 };
 
 const Revision = () => {
-  const { user } = useAuth(); // 👈 aquí tomamos analista logueado
+  const { user, isSuper, isStandard } = useAuth();
   const navigate = useNavigate();
 
   const [tramites, setTramites] = useState([]);

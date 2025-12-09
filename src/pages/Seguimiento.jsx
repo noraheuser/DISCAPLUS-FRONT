@@ -25,9 +25,6 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useNavigate } from "react-router-dom";
 
 import { ESTADOS_TRAMITE, ETAPAS_TRAMITE } from "../constants/tramiteOptions";
-// ❌ Ya no usamos UNIDADES aquí
-// import { UNIDADES } from "../constants/unidades";
-
 import api from "../api/client";
 
 // ---------- utilidades ----------
@@ -71,16 +68,9 @@ const mapEtapaFromApi = (etapaApi) => {
   }
 };
 
-// genera lista única de “Asignado a”
-const obtenerAsignadosUnicos = (tramites) => {
-  const nombres = tramites
-    .map((t) => t.asignadoA)
-    .filter((n) => n && n.trim() !== "");
-  return Array.from(new Set(nombres)); // elimina duplicados
-};
-
 const Seguimiento = () => {
-  const [rutExacto, setRutExacto] = useState("");  
+  const [idFiltro, setIdFiltro] = useState("");
+  const [rutExacto, setRutExacto] = useState("");
   const [rutDesde, setRutDesde] = useState("");
   const [rutHasta, setRutHasta] = useState("");
 
@@ -88,12 +78,12 @@ const Seguimiento = () => {
   const [estado, setEstado] = useState("");
   const [etapa, setEtapa] = useState("");
   const [asignadoA, setAsignadoA] = useState("");
+  const [derivadoAFilter, setDerivadoAFilter] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
 
   const [tramites, setTramites] = useState([]);
   const [asignadosUnicos, setAsignadosUnicos] = useState([]);
-  const [derivaciones, setDerivaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -104,17 +94,21 @@ const Seguimiento = () => {
       try {
         setLoading(true);
 
-        const [solRes, usrRes, funcRes, derivRes] = await Promise.all([
+        const [solRes, usrRes, funcRes] = await Promise.all([
           api.get("/solicitud"),
           api.get("/usuarios"),
           api.get("/funcionarios"),
-          api.get("/derivacion"),
         ]);
-        setDerivaciones(derivRes.data); 
 
         const solicitudes = solRes.data;
         const usuarios = usrRes.data;
         const funcionarios = funcRes.data;
+
+        // Lista de nombres de funcionarios para el combo "Asignado a"
+        const nombresFuncionarios = funcionarios
+          .map((f) => f.nombre_completo)
+          .filter((n) => n && n.trim() !== "");
+        const listaAsignados = Array.from(new Set(nombresFuncionarios));
 
         const mapeados = solicitudes.map((s) => {
           const usuario = usuarios.find(
@@ -123,10 +117,18 @@ const Seguimiento = () => {
           const funcionario = funcionarios.find(
             (f) => f.id_funcionario === s.asignado_a
           );
-          const derivacion = derivaciones.find(
-            (d) => d.id_derivacion === s.id_derivacion
-          );
-          const etapaLabel = mapEtapaFromApi(s.etapa);
+
+          // Mostrar "Registro Civil" solo si está COMPLETADO + tiene id_derivacion
+          const derivadoALabel =
+            s.estado === "COMPLETADO" && s.id_derivacion != null
+              ? "Registro Civil"
+              : "";
+
+          // Etapa: usamos la normal, pero para COMPLETADO+RegistroCivil la dejamos "-"
+          let etapaLabel = mapEtapaFromApi(s.etapa);
+          if (s.estado === "COMPLETADO" && s.id_derivacion != null) {
+            etapaLabel = "-";
+          }
 
           return {
             id: s.id_solicitud,
@@ -137,21 +139,18 @@ const Seguimiento = () => {
               usuario?.nombres && usuario?.apellidos
                 ? `${usuario.nombres} ${usuario.apellidos}`
                 : "",
-            estado: s.estado,                 // <--- ENUM real: EN_CURSO, COMPLETADO, RECHAZADO
+            estado: s.estado,
             estadoLabel: mapEstadoFromApi(s.estado),
-              etapa: s.etapa,       // valor REAL ENUM
-              etapaLabel,   
-            // 👇 SI está "En espera de derivación", mostramos vacío aunque la BD tenga algo
-            // 👉 Dos campos separados
+            etapa: s.etapa,
+            etapaLabel,
             asignadoA: funcionario?.nombre_completo || "",
-            derivadoA: derivacion?.nombre || "",
-
+            derivadoA: derivadoALabel,
             fechaCreacion: s.fecha_ingreso,
           };
-          });
+        });
 
         setTramites(mapeados);
-        setAsignadosUnicos(obtenerAsignadosUnicos(mapeados));
+        setAsignadosUnicos(listaAsignados);
       } catch (err) {
         console.error("ERROR CARGANDO TRÁMITES", err);
         setError(
@@ -168,13 +167,15 @@ const Seguimiento = () => {
   }, []);
 
   const limpiarFiltros = () => {
-    setRutExacto("");  
+    setIdFiltro("");
+    setRutExacto("");
     setRutDesde("");
     setRutHasta("");
     setNombre("");
     setEstado("");
     setEtapa("");
     setAsignadoA("");
+    setDerivadoAFilter("");
     setFechaDesde("");
     setFechaHasta("");
   };
@@ -185,68 +186,82 @@ const Seguimiento = () => {
   };
 
   const filtrarTramites = () => {
-  const rutDesdeNum = normalizarRut(rutDesde);
-  const rutHastaNum = normalizarRut(rutHasta);
-  const rutExactoNum = normalizarRut(rutExacto);   // 👈 NUEVO
+    const rutDesdeNum = normalizarRut(rutDesde);
+    const rutHastaNum = normalizarRut(rutHasta);
+    const rutExactoNum = normalizarRut(rutExacto);
 
-  return tramites.filter((t) => {
-    const rutTramiteNum = normalizarRut(t.rut);
+    const idNum =
+      idFiltro.trim() === "" ? null : parseInt(idFiltro.trim(), 10);
 
-    let cumpleRut = true;
+    return tramites.filter((t) => {
+      // Filtro por ID
+      const cumpleId =
+        idNum === null || Number.isNaN(idNum) ? true : t.id === idNum;
 
-    // 👉 PRIORIDAD: si hay RUT exacto, se usa sólo eso
-    if (rutExacto) {
-      if (
-        rutTramiteNum == null ||
-        rutExactoNum == null ||
-        rutTramiteNum !== rutExactoNum
-      ) {
-        cumpleRut = false;
-      }
-    } else if (rutDesde || rutHasta) {
-      // Si no hay RUT exacto, usamos el rango como antes
-      if (rutTramiteNum == null) {
-        cumpleRut = false;
-      } else {
-        if (rutDesdeNum != null && rutTramiteNum < rutDesdeNum) {
+      // Filtros por RUT
+      const rutTramiteNum = normalizarRut(t.rut);
+      let cumpleRut = true;
+
+      if (rutExacto) {
+        if (
+          rutTramiteNum == null ||
+          rutExactoNum == null ||
+          rutTramiteNum !== rutExactoNum
+        ) {
           cumpleRut = false;
         }
-        if (rutHastaNum != null && rutTramiteNum > rutHastaNum) {
+      } else if (rutDesde || rutHasta) {
+        if (rutTramiteNum == null) {
           cumpleRut = false;
+        } else {
+          if (rutDesdeNum != null && rutTramiteNum < rutDesdeNum) {
+            cumpleRut = false;
+          }
+          if (rutHastaNum != null && rutTramiteNum > rutHastaNum) {
+            cumpleRut = false;
+          }
         }
       }
-    }
 
-    const nombreCompleto =
-      `${t.nombres || ""} ${t.apellidos || ""}`.trim() || t.nombre || "";
+      const nombreCompleto =
+        `${t.nombres || ""} ${t.apellidos || ""}`.trim() ||
+        t.nombre ||
+        "";
 
-    const cumpleNombre =
-      nombre === "" ||
-      nombreCompleto.toLowerCase().includes(nombre.toLowerCase());
+      const cumpleNombre =
+        nombre === "" ||
+        nombreCompleto.toLowerCase().includes(nombre.toLowerCase());
 
-    const cumpleEstado = estado === "" || t.estado === estado;
-    const cumpleEtapa = etapa === "" || t.etapa === etapa;
-    const cumpleAsignado =
-      asignadoA === "" ||
-      t.asignadoA.toLowerCase().includes(asignadoA.toLowerCase());
-    const cumpleDesde =
-      fechaDesde === "" ||
-      new Date(t.fechaCreacion) >= new Date(fechaDesde);
-    const cumpleHasta =
-      fechaHasta === "" ||
-      new Date(t.fechaCreacion) <= new Date(fechaHasta);
+      const cumpleEstado = estado === "" || t.estado === estado;
+      const cumpleEtapa = etapa === "" || t.etapa === etapa;
 
-    return (
-      cumpleRut &&
-      cumpleNombre &&
-      cumpleEstado &&
-      cumpleEtapa &&
-      cumpleAsignado &&
-      cumpleDesde &&
-      cumpleHasta
-    );
-  });
-};
+      const cumpleAsignado =
+        asignadoA === "" ||
+        t.asignadoA.toLowerCase().includes(asignadoA.toLowerCase());
+
+      const cumpleDerivado =
+        derivadoAFilter === "" || t.derivadoA === derivadoAFilter;
+
+      const cumpleDesde =
+        fechaDesde === "" ||
+        new Date(t.fechaCreacion) >= new Date(fechaDesde);
+      const cumpleHasta =
+        fechaHasta === "" ||
+        new Date(t.fechaCreacion) <= new Date(fechaHasta);
+
+      return (
+        cumpleId &&
+        cumpleRut &&
+        cumpleNombre &&
+        cumpleEstado &&
+        cumpleEtapa &&
+        cumpleAsignado &&
+        cumpleDerivado &&
+        cumpleDesde &&
+        cumpleHasta
+      );
+    });
+  };
 
   const tramitesFiltrados = filtrarTramites();
 
@@ -295,15 +310,25 @@ const Seguimiento = () => {
         </Typography>
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="RUT exacto"
-                helperText="Si lo usas, ignora el rango"
-                value={rutExacto}
-                onChange={(e) => setRutExacto(e.target.value)}
-                fullWidth
-              />
-            </Grid>
+          {/* ID */}
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="ID solicitud"
+              value={idFiltro}
+              onChange={(e) => setIdFiltro(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+
+          {/* RUTs */}
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="RUT exacto"
+              value={rutExacto}
+              onChange={(e) => setRutExacto(e.target.value)}
+              fullWidth
+            />
+          </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="RUT desde"
@@ -321,6 +346,7 @@ const Seguimiento = () => {
             />
           </Grid>
 
+          {/* Nombre */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="Nombre"
@@ -329,6 +355,8 @@ const Seguimiento = () => {
               fullWidth
             />
           </Grid>
+
+          {/* Estado / Etapa */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               select
@@ -359,6 +387,8 @@ const Seguimiento = () => {
               ))}
             </TextField>
           </Grid>
+
+          {/* Asignado a */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               select
@@ -375,6 +405,23 @@ const Seguimiento = () => {
               ))}
             </TextField>
           </Grid>
+
+          {/* Derivado a */}
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              select
+              label="Derivado a"
+              value={derivadoAFilter}
+              onChange={(e) => setDerivadoAFilter(e.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {/* Por ahora solo Registro Civil, pero preparado para más */}
+              <MenuItem value="Registro Civil">Registro Civil</MenuItem>
+            </TextField>
+          </Grid>
+
+          {/* Fechas */}
           <Grid item xs={6} md={3}>
             <TextField
               label="Desde"
@@ -395,6 +442,8 @@ const Seguimiento = () => {
               fullWidth
             />
           </Grid>
+
+          {/* Botones */}
           <Grid item xs={6} md={3}>
             <Button variant="outlined" fullWidth onClick={limpiarFiltros}>
               Limpiar
@@ -454,8 +503,7 @@ const Seguimiento = () => {
                     <TableCell>{renderEstadoChip(t.estadoLabel)}</TableCell>
                     <TableCell>{t.etapaLabel}</TableCell>
                     <TableCell>{t.asignadoA}</TableCell>
-                    <TableCell>{t.derivadoA}</TableCell>    
-
+                    <TableCell>{t.derivadoA}</TableCell>
                     <TableCell>
                       {t.fechaCreacion &&
                         new Date(t.fechaCreacion).toLocaleString()}
@@ -464,13 +512,16 @@ const Seguimiento = () => {
                       <Tooltip title="Ver detalle">
                         <IconButton
                           size="small"
-                          onClick={() => navigate(`/seguimiento/${t.id}`, { state: { tramite: t } })}
-                          >
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                          onClick={() =>
+                            navigate(`/seguimiento/${t.id}`, {
+                              state: { tramite: t },
+                            })
+                          }
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
-                    
                   </TableRow>
                 );
               })}

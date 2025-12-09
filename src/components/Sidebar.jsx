@@ -11,18 +11,19 @@ import {
 import { Link } from "react-router-dom";
 
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import EngineeringIcon from "@mui/icons-material/Engineering";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
-import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
-import ApiIcon from "@mui/icons-material/Api";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
+import { useAuth } from "../contexts/AuthContext";   // 👈 NUEVO
+
 const drawerWidth = 240;
 
 const Sidebar = () => {
+  const { isSuper } = useAuth(); // 👈 saber si es Encargada
+
   return (
     <Drawer
       variant="permanent"
@@ -38,7 +39,6 @@ const Sidebar = () => {
     >
       <Toolbar />
       <List>
-
         {/* Inicio */}
         <ListItemButton component={Link} to="/">
           <ListItemIcon>
@@ -46,7 +46,6 @@ const Sidebar = () => {
           </ListItemIcon>
           <ListItemText primary="Inicio" />
         </ListItemButton>
-
 
         {/* Seguimiento */}
         <ListItemButton component={Link} to="/seguimiento">
@@ -56,7 +55,7 @@ const Sidebar = () => {
           <ListItemText primary="Seguimiento" />
         </ListItemButton>
 
-        {/* Revisión (misma ruta que seguimiento) */}
+        {/* Revisión */}
         <ListItemButton component={Link} to="/revision">
           <ListItemIcon>
             <FactCheckIcon />
@@ -64,6 +63,15 @@ const Sidebar = () => {
           <ListItemText primary="Revisión" />
         </ListItemButton>
 
+        {/* 👉 Bitácora (solo Encargada / isSuper) */}
+        {isSuper && (
+          <ListItemButton component={Link} to="/bitacora">
+            <ListItemIcon>
+              <VisibilityIcon />
+            </ListItemIcon>
+            <ListItemText primary="Bitácora" />
+          </ListItemButton>
+        )}
 
         <Divider sx={{ my: 1 }} />
 
@@ -82,7 +90,6 @@ const Sidebar = () => {
           </ListItemIcon>
           <ListItemText primary="Ayuda" />
         </ListItemButton>
-
       </List>
     </Drawer>
   );

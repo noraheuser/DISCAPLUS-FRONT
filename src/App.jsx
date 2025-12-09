@@ -13,6 +13,8 @@ import Ayuda from "./pages/Ayuda";
 import Revision from "./pages/Revision"; // ⬅️ AÑADIR ESTA LÍNEA
 import { useAuth } from "./contexts/AuthContext";
 import PruebaAPI from "./pages/PruebaAPI";
+import Bitacora from "./pages/Bitacora";
+
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -35,9 +37,10 @@ function App() {
         {/* Rutas */}
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/seguimiento" element={<Seguimiento />} />s
+          <Route path="/seguimiento" element={<Seguimiento />} />
           <Route path="/seguimiento/:id" element={<SeguimientoDetalle />} />
           <Route path="/revision" element={<Revision />} />
+          <Route path="/bitacora" element={<Bitacora />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="/ayuda" element={<Ayuda />} />
           <Route path="/prueba-api" element={<PruebaAPI />} />
