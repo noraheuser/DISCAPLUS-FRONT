@@ -1,4 +1,4 @@
-// Seguimiento.jsx
+// src/pages/Seguimiento.jsx
 
 import React, { useState, useEffect } from "react";
 import {
@@ -19,7 +19,10 @@ import {
   Tooltip,
   IconButton,
   Box,
+  Card,
+  CardContent,
 } from "@mui/material";
+
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useNavigate } from "react-router-dom";
@@ -89,6 +92,7 @@ const Seguimiento = () => {
 
   const navigate = useNavigate();
 
+  // ---------- carga inicial ----------
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -104,7 +108,6 @@ const Seguimiento = () => {
         const usuarios = usrRes.data;
         const funcionarios = funcRes.data;
 
-        // Lista de nombres de funcionarios para el combo "Asignado a"
         const nombresFuncionarios = funcionarios
           .map((f) => f.nombre_completo)
           .filter((n) => n && n.trim() !== "");
@@ -118,13 +121,11 @@ const Seguimiento = () => {
             (f) => f.id_funcionario === s.asignado_a
           );
 
-          // Mostrar "Registro Civil" solo si está COMPLETADO + tiene id_derivacion
           const derivadoALabel =
             s.estado === "COMPLETADO" && s.id_derivacion != null
               ? "Registro Civil"
               : "";
 
-          // Etapa: usamos la normal, pero para COMPLETADO+RegistroCivil la dejamos "-"
           let etapaLabel = mapEtapaFromApi(s.etapa);
           if (s.estado === "COMPLETADO" && s.id_derivacion != null) {
             etapaLabel = "-";
@@ -185,6 +186,7 @@ const Seguimiento = () => {
     return <Chip label={estado} color={color} variant="outlined" />;
   };
 
+  // ---------- filtros ----------
   const filtrarTramites = () => {
     const rutDesdeNum = normalizarRut(rutDesde);
     const rutHastaNum = normalizarRut(rutHasta);
@@ -194,11 +196,9 @@ const Seguimiento = () => {
       idFiltro.trim() === "" ? null : parseInt(idFiltro.trim(), 10);
 
     return tramites.filter((t) => {
-      // Filtro por ID
       const cumpleId =
         idNum === null || Number.isNaN(idNum) ? true : t.id === idNum;
 
-      // Filtros por RUT
       const rutTramiteNum = normalizarRut(t.rut);
       let cumpleRut = true;
 
@@ -265,13 +265,26 @@ const Seguimiento = () => {
 
   const tramitesFiltrados = filtrarTramites();
 
+  // ---------- resumen para tarjetas ----------
+  const total = tramitesFiltrados.length;
+  const enCurso = tramitesFiltrados.filter(
+    (t) => t.estado === "EN_CURSO"
+  ).length;
+  const enRevision = tramitesFiltrados.filter(
+    (t) => t.etapa === "REVISION"
+  ).length;
+  const completados = tramitesFiltrados.filter(
+    (t) => t.estado === "COMPLETADO"
+  ).length;
+
+  // ---------- duplicados por RUT ----------
   const obtenerDuplicados = () => {
     const mapa = {};
     tramitesFiltrados.forEach((t) => {
       if (!mapa[t.rut]) mapa[t.rut] = [];
       mapa[t.rut].push(t.id);
     });
-    return Object.entries(mapa).reduce((acc, [rut, ids]) => {
+    return Object.entries(mapa).reduce((acc, [, ids]) => {
       if (ids.length > 1) {
         ids.forEach((id) => {
           acc[id] = ids.filter((otroId) => otroId !== id);
@@ -283,6 +296,7 @@ const Seguimiento = () => {
 
   const duplicadosPorId = obtenerDuplicados();
 
+  // ---------- estados de carga / error ----------
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4 }}>
@@ -299,6 +313,7 @@ const Seguimiento = () => {
     );
   }
 
+  // ---------- render ----------
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
       <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
@@ -309,8 +324,8 @@ const Seguimiento = () => {
           Por defecto, los resultados se limitan a una semana…
         </Typography>
 
+        {/* Filtros */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          {/* ID */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="ID solicitud"
@@ -320,7 +335,6 @@ const Seguimiento = () => {
             />
           </Grid>
 
-          {/* RUTs */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="RUT exacto"
@@ -346,7 +360,6 @@ const Seguimiento = () => {
             />
           </Grid>
 
-          {/* Nombre */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="Nombre"
@@ -356,7 +369,6 @@ const Seguimiento = () => {
             />
           </Grid>
 
-          {/* Estado / Etapa */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               select
@@ -372,6 +384,7 @@ const Seguimiento = () => {
               ))}
             </TextField>
           </Grid>
+
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               select
@@ -388,7 +401,6 @@ const Seguimiento = () => {
             </TextField>
           </Grid>
 
-          {/* Asignado a */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               select
@@ -398,15 +410,14 @@ const Seguimiento = () => {
               fullWidth
             >
               <MenuItem value="">Todos</MenuItem>
-              {asignadosUnicos.map((nombre) => (
-                <MenuItem key={nombre} value={nombre}>
-                  {nombre}
+              {asignadosUnicos.map((nombreFun) => (
+                <MenuItem key={nombreFun} value={nombreFun}>
+                  {nombreFun}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
 
-          {/* Derivado a */}
           <Grid item xs={12} sm={6} md={3}>
             <TextField
               select
@@ -416,12 +427,10 @@ const Seguimiento = () => {
               fullWidth
             >
               <MenuItem value="">Todos</MenuItem>
-              {/* Por ahora solo Registro Civil, pero preparado para más */}
               <MenuItem value="Registro Civil">Registro Civil</MenuItem>
             </TextField>
           </Grid>
 
-          {/* Fechas */}
           <Grid item xs={6} md={3}>
             <TextField
               label="Desde"
@@ -443,7 +452,6 @@ const Seguimiento = () => {
             />
           </Grid>
 
-          {/* Botones */}
           <Grid item xs={6} md={3}>
             <Button variant="outlined" fullWidth onClick={limpiarFiltros}>
               Limpiar
@@ -456,6 +464,62 @@ const Seguimiento = () => {
           </Grid>
         </Grid>
 
+        {/* Tarjetas de resumen */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={3}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="caption" color="text.secondary">
+                  Total trámites
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {total}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={3}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="caption" color="text.secondary">
+                  En revisión
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {enRevision}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={3}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="caption" color="text.secondary">
+                  En curso
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {enCurso}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={3}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="caption" color="text.secondary">
+                  Completados
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {completados}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Tabla */}
         <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
           <Table>
             <TableHead sx={{ backgroundColor: "#f5f5f5" }}>

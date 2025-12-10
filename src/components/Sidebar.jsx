@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import React from "react";
 import {
   Drawer,
@@ -7,6 +8,7 @@ import {
   ListItemText,
   Toolbar,
   Divider,
+  Box,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 
@@ -15,14 +17,22 @@ import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import HistoryIcon from "@mui/icons-material/History";
 
-import { useAuth } from "../contexts/AuthContext";   // 👈 NUEVO
+import { useAuth } from "../contexts/AuthContext";
 
 const drawerWidth = 240;
 
 const Sidebar = () => {
-  const { isSuper } = useAuth(); // 👈 saber si es Encargada
+  const { isSuper } = useAuth();
+
+  const itemSx = {
+    color: "inherit",
+    "& .MuiListItemIcon-root": {
+      color: "inherit",
+      minWidth: 40,
+    },
+  };
 
   return (
     <Drawer
@@ -33,64 +43,90 @@ const Sidebar = () => {
         [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
           boxSizing: "border-box",
-          backgroundColor: "#f5f5f5",
+          background:
+            "linear-gradient(180deg, #003c6f 0%, #005c97 40%, #007bb2 100%)",
+          color: "#fff",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
       <Toolbar />
-      <List>
-        {/* Inicio */}
-        <ListItemButton component={Link} to="/">
-          <ListItemIcon>
-            <DashboardIcon />
-          </ListItemIcon>
-          <ListItemText primary="Inicio" />
-        </ListItemButton>
 
-        {/* Seguimiento */}
-        <ListItemButton component={Link} to="/seguimiento">
-          <ListItemIcon>
-            <TrackChangesIcon />
-          </ListItemIcon>
-          <ListItemText primary="Seguimiento" />
-        </ListItemButton>
-
-        {/* Revisión */}
-        <ListItemButton component={Link} to="/revision">
-          <ListItemIcon>
-            <FactCheckIcon />
-          </ListItemIcon>
-          <ListItemText primary="Revisión" />
-        </ListItemButton>
-
-        {/* 👉 Bitácora (solo Encargada / isSuper) */}
-        {isSuper && (
-          <ListItemButton component={Link} to="/bitacora">
+      {/* Contenedor para separar menú principal y menú inferior */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        {/* Menú principal (arriba) */}
+        <List>
+          {/* Inicio */}
+          <ListItemButton component={Link} to="/" sx={itemSx}>
             <ListItemIcon>
-              <VisibilityIcon />
+              <DashboardIcon />
             </ListItemIcon>
-            <ListItemText primary="Bitácora" />
+            <ListItemText primary="Inicio" />
           </ListItemButton>
-        )}
 
-        <Divider sx={{ my: 1 }} />
+          {/* Seguimiento */}
+          <ListItemButton component={Link} to="/seguimiento" sx={itemSx}>
+            <ListItemIcon>
+              <TrackChangesIcon />
+            </ListItemIcon>
+            <ListItemText primary="Seguimiento" />
+          </ListItemButton>
 
-        {/* Configuración */}
-        <ListItemButton component={Link} to="/configuracion">
-          <ListItemIcon>
-            <SettingsIcon />
-          </ListItemIcon>
-          <ListItemText primary="Configuración" />
-        </ListItemButton>
+          {/* Revisión */}
+          <ListItemButton component={Link} to="/revision" sx={itemSx}>
+            <ListItemIcon>
+              <FactCheckIcon />
+            </ListItemIcon>
+            <ListItemText primary="Revisión" />
+          </ListItemButton>
 
-        {/* Ayuda */}
-        <ListItemButton component={Link} to="/ayuda">
-          <ListItemIcon>
-            <HelpOutlineIcon />
-          </ListItemIcon>
-          <ListItemText primary="Ayuda" />
-        </ListItemButton>
-      </List>
+          {/* Bitácora – solo perfiles súper */}
+          {isSuper && (
+            <ListItemButton component={Link} to="/bitacora" sx={itemSx}>
+              <ListItemIcon>
+                <HistoryIcon />
+              </ListItemIcon>
+              <ListItemText primary="Bitácora" />
+            </ListItemButton>
+          )}
+        </List>
+
+        {/* Menú inferior (abajo) */}
+        <Box>
+          <Divider
+            sx={{
+              my: 1,
+              borderColor: "rgba(255,255,255,0.2)",
+            }}
+          />
+
+          <List>
+            {/* Configuración */}
+            <ListItemButton component={Link} to="/configuracion" sx={itemSx}>
+              <ListItemIcon>
+                <SettingsIcon />
+              </ListItemIcon>
+              <ListItemText primary="Configuración" />
+            </ListItemButton>
+
+            {/* Ayuda */}
+            <ListItemButton component={Link} to="/ayuda" sx={itemSx}>
+              <ListItemIcon>
+                <HelpOutlineIcon />
+              </ListItemIcon>
+              <ListItemText primary="Ayuda" />
+            </ListItemButton>
+          </List>
+        </Box>
+      </Box>
     </Drawer>
   );
 };
